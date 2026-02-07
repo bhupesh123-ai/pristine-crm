@@ -144,20 +144,30 @@ elif menu == "AI Itinerary Builder":
         st.info("✈️ Paste Flight PNR below (AI will extract times)")
         pnr_text = st.text_area("Flight Details", height=70)
 
-        # --- GENERATE BUTTON ---
+       # --- GENERATE BUTTON ---
         if st.button("Generate Draft Itinerary"):
             with st.spinner("Writing Professional Itinerary..."):
                 try:
-                    # SMART MODEL SELECTOR (The Fix)
-                    # This loops through available models and picks the first one that works
-                    model_name = "gemini-pro" # Default backup
+                    # SMART MODEL SEARCH (The Fix)
+                    # We explicitly look for '1.5-flash' because it has a 1500/day free limit.
+                    target_model = None
+                    
+                    # 1. Search for the high-limit model first
                     for m in genai.list_models():
                         if 'generateContent' in m.supported_generation_methods:
-                            model_name = m.name
-                            break # Found one! Stop looking.
+                            if '1.5-flash' in m.name:
+                                target_model = m.name
+                                break 
                     
-                    # Create the model using the found name
-                    model = genai.GenerativeModel(model_name)
+                    # 2. If not found, fall back to whatever is available (e.g. gemini-pro)
+                    if not target_model:
+                        for m in genai.list_models():
+                            if 'generateContent' in m.supported_generation_methods:
+                                target_model = m.name
+                                break
+                    
+                    # Create the model using the best found name
+                    model = genai.GenerativeModel(target_model)
                     
                     prompt = f"""
                     Act as a Senior Consultant for Pristine Vacations.
@@ -181,7 +191,8 @@ elif menu == "AI Itinerary Builder":
                     """
                     response = model.generate_content(prompt)
                     st.session_state['generated_itinerary'] = response.text
-                    st.success(f"Draft Created using {model_name}!")
+                    st.success(f"Draft Created using {target_model} (High Limit Mode)!")
+                    
                 except Exception as e:
                     st.error(f"AI Error: {e}")
 
