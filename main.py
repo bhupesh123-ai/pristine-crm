@@ -71,86 +71,53 @@ except ImportError:
 
 
 # ===============================
-# 5. FREE TIER MODEL DISCOVERY & AI GENERATION
+# 5. THE AI "WATERFALL" ENGINE (ANTI-QUOTA SYSTEM)
 # ===============================
-
-
-def find_free_tier_model(api_key):
-    """
-    Finds a model that is likely to be FREE.
-    """
-    url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
-    try:
-        response = requests.get(url)
-        if response.status_code != 200:
-            return None
-        
-        data = response.json()
-        all_models = [m['name'].replace('models/', '') for m in data.get('models', [])]
-        
-        priority_list = [
-            "gemini-1.5-flash-001",
-            "gemini-1.5-flash-002",
-            "gemini-1.5-flash",
-            "gemini-1.0-pro",
-            "gemini-1.0-pro-001"
-        ]
-
-        for p in priority_list:
-            if p in all_models:
-                return p
-
-        for m in all_models:
-            if "flash" in m and "latest" not in m and "exp" not in m:
-                return m
-
-        if "gemini-pro" in all_models:
-            return "gemini-pro"
-
-        return None
-    except Exception:
-        return None
+import time
 
 def generate_itinerary_free(prompt_text):
     if not GOOGLE_KEY:
         return None, "Google Key is missing."
 
-    best_model_id = find_free_tier_model(GOOGLE_KEY)
-    
-    if not best_model_id:
-        best_model_id = "gemini-1.5-flash" 
+    # The Waterfall List: If model 1 is full, instantly try model 2, then model 3.
+    fallback_models = [
+        "gemini-1.5-flash",
+        "gemini-1.0-pro",
+        "gemini-pro"
+    ]
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{best_model_id}:generateContent?key={GOOGLE_KEY}"
     headers = {'Content-Type': 'application/json'}
     data = {"contents": [{"parts": [{"text": prompt_text}]}]}
 
-    # --- RETRY LOGIC FOR 503/429 ERRORS ---
-    max_retries = 3
+    # Go through our list of models one by one
+    for model_id in fallback_models:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent?key={GOOGLE_KEY}"
 
-    for attempt in range(max_retries):
-        try:
-            response = requests.post(url, headers=headers, json=data, timeout=30)
-            
-            if response.status_code == 200:
-                return response.json()['candidates'][0]['content']['parts'][0]['text'], f"Success using {best_model_id}"
-            
-            elif response.status_code in [503, 429]:
-                wait_time = 2 ** attempt # Waits 1s, then 2s, then 4s
-                print(f"Server busy. Retrying in {wait_time} seconds...")
-                time.sleep(wait_time)
-                continue 
+        # Give each model 2 attempts to answer
+        for attempt in range(2):
+            try:
+                response = requests.post(url, headers=headers, json=data, timeout=30)
                 
-            elif response.status_code == 404:
-                 return None, f"Model {best_model_id} Not Found."
-            else:
-                return None, f"Model Error {response.status_code}: {response.text}"
+                # 1. SUCCESS
+                if response.status_code == 200:
+                    return response.json()['candidates'][0]['content']['parts'][0]['text'], f"Success ({model_id})"
                 
-        except Exception as e:
-            time.sleep(2)
-            continue
-            
-    return None, "Google's AI servers are completely overloaded right now. Please wait 30 seconds and try again."
+                # 2. QUOTA EXCEEDED (429) OR BUSY (503)
+                elif response.status_code in [429, 503]:
+                    time.sleep(3) # Wait 3 seconds to let Google's free quota refill slightly
+                    continue # Try this specific model one more time
+                    
+                # 3. HARD ERROR (Model doesn't exist for this key, etc.)
+                else:
+                    break # Stop trying this model, immediately move to the next model in the list
+                    
+            except Exception as e:
+                # Network glitch
+                time.sleep(2)
+                continue
 
+    # If the code reaches the very bottom, ALL models failed all their attempts
+    return None, "Google's Free Tier is taking a mandatory 1-minute breather. Please wait 60 seconds and click Generate again."
 # ===============================
 # 6. SIDEBAR & NAVIGATION
 # ===============================
