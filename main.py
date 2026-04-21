@@ -64,18 +64,37 @@ except ImportError:
     pass # Will handle gracefully in the UI
 
 from fpdf import FPDF
+import os
+import datetime
 
 def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out, nights, room_type, inclusions, notes):
+    
+    # --- NEW: Text Cleaner to prevent 'latin-1' crashes ---
+    def clean(text):
+        if not text: return ""
+        # Replace common Unicode characters with safe ASCII equivalents
+        return str(text).replace("•", "-").replace("‘", "'").replace("’", "'").replace("“", '"').replace("”", '"').replace("–", "-").replace("—", "-").encode('latin-1', 'ignore').decode('latin-1')
+
+    # Clean all user inputs before putting them in the PDF
+    client_name = clean(client_name)
+    conf_no = clean(conf_no)
+    hotel_details = clean(hotel_details)
+    check_in = clean(check_in)
+    check_out = clean(check_out)
+    room_type = clean(room_type)
+    inclusions = clean(inclusions)
+    notes = clean(notes)
+
     pdf = FPDF('P', 'mm', 'A4')
     pdf.add_page()
     
     # Brand Colors
-    PRIMARY = (41, 128, 185)   # Pristine Blue
-    DARK_BG = (41, 128, 185)   # Table Header Blue
-    LIGHT_BG = (236, 240, 241) # Light Grey Fill
-    TEXT = (40, 40, 40)        # Dark Grey Text
+    PRIMARY = (41, 128, 185)   
+    DARK_BG = (41, 128, 185)   
+    LIGHT_BG = (236, 240, 241) 
+    TEXT = (40, 40, 40)        
 
-    # 1. Header (Logo & Company Info)
+    # 1. Header 
     if os.path.exists("logo.png"):
         pdf.image("logo.png", x=10, y=10, w=40)
 
@@ -123,7 +142,6 @@ def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out,
     x = pdf.get_x()
     y = pdf.get_y()
 
-    # Draw strict borders for clean alignment
     pdf.rect(x, y, 95, 18)
     pdf.rect(x+95, y, 95, 18)
 
@@ -162,7 +180,7 @@ def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out,
     pdf.multi_cell(0, 6, f" {notes}", border=1)
     pdf.ln(4)
 
-    # --- BLOCK 5: Guest & Room (The Table) ---
+    # --- BLOCK 5: Guest & Room ---
     pdf.set_font("Arial", "B", 9)
     pdf.set_fill_color(*LIGHT_BG)
     pdf.cell(63, 7, " GUEST NAME", border=1, fill=True)
@@ -188,11 +206,14 @@ def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out,
 
     pdf.set_y(y + 25 + 8)
 
-    # --- BLOCK 6: Important Info ---
+    # --- BLOCK 6: Important Info (Fixed Bullet Points!) ---
     pdf.set_font("Arial", "B", 10)
     pdf.cell(0, 6, "Important Information:", ln=True)
     pdf.set_font("Arial", "", 9)
-    pdf.multi_cell(0, 5, "• Please present this voucher and a valid Passport upon arrival.\n• Standard check-in time is 14:00 hrs and check-out is 12:00 hrs.\n• Incidental charges to be settled directly with the hotel.")
+    
+    # We use hyphens (-) here instead of Unicode bullets (•)
+    safe_info = "- Please present this voucher and a valid Passport upon arrival.\n- Standard check-in time is 14:00 hrs and check-out is 12:00 hrs.\n- Incidental charges to be settled directly with the hotel."
+    pdf.multi_cell(0, 5, safe_info)
 
     pdf.ln(15)
     pdf.set_font("Arial", "I", 9)
