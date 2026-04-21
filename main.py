@@ -23,12 +23,10 @@ SessionLocal = sessionmaker(bind=engine)
 db_session = SessionLocal()
 
 # ===============================
-# 3. API KEY LOADING
+# 3. API KEY LOADING (HARDCODED FOR TESTING)
 # ===============================
-try:
-    GOOGLE_KEY = st.secrets["GOOGLE_API_KEY"]
-except:
-    GOOGLE_KEY = ""
+# Paste your NEW key exactly between the quotes below:
+GOOGLE_KEY = "AIzaSyCCWXJ9461pr-t4PVe5rYAmbfbcExJZ20o"
 
 # ===============================
 # 4. UPGRADED DATABASE MODELS
@@ -81,9 +79,11 @@ def generate_itinerary_free(prompt_text):
         return None, "Google Key is missing."
 
     fallback_models = [
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-flash-002",
         "gemini-1.5-flash",
-        "gemini-1.0-pro",
-        "gemini-pro"
+        "gemini-1.0-pro-latest"
+    ]
     ]
 
     headers = {'Content-Type': 'application/json'}
