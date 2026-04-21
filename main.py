@@ -69,13 +69,11 @@ import datetime
 
 def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out, nights, room_type, inclusions, notes):
     
-    # --- NEW: Text Cleaner to prevent 'latin-1' crashes ---
     def clean(text):
         if not text: return ""
-        # Replace common Unicode characters with safe ASCII equivalents
         return str(text).replace("•", "-").replace("‘", "'").replace("’", "'").replace("“", '"').replace("”", '"').replace("–", "-").replace("—", "-").encode('latin-1', 'ignore').decode('latin-1')
 
-    # Clean all user inputs before putting them in the PDF
+    # Clean all user inputs before printing
     client_name = clean(client_name)
     conf_no = clean(conf_no)
     hotel_details = clean(hotel_details)
@@ -88,137 +86,134 @@ def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out,
     pdf = FPDF('P', 'mm', 'A4')
     pdf.add_page()
     
-    # Brand Colors
-    PRIMARY = (41, 128, 185)   
-    DARK_BG = (41, 128, 185)   
-    LIGHT_BG = (236, 240, 241) 
-    TEXT = (40, 40, 40)        
+    # --- Ultra-Minimal Palette ---
+    GOLD = (186, 163, 104)       # Matte Champagne Gold
+    LIGHT_GOLD = (250, 248, 242) # Extremely subtle gold-tinted grey
+    DARK_TEXT = (40, 40, 40)
+    GREY_TEXT = (100, 100, 100)
 
-    # 1. Header 
+    # 1. Header (Fixed Logo Height & Spacing)
     if os.path.exists("logo.png"):
-        pdf.image("logo.png", x=10, y=10, w=40)
+        # By setting 'h' instead of 'w', the logo anchors neatly at the top
+        pdf.image("logo.png", x=10, y=10, h=25)
 
-    pdf.set_font("Arial", "B", 15)
-    pdf.set_text_color(*PRIMARY)
-    pdf.set_xy(60, 12)
-    pdf.cell(0, 6, "PRISTINE VACATIONS", ln=True)
+    # Right-aligned Company Details using Serif Font
+    pdf.set_font("Times", "B", 18)
+    pdf.set_text_color(*GOLD)
+    pdf.set_xy(100, 12)
+    pdf.multi_cell(100, 6, "PRISTINE VACATIONS", align="R")
 
-    pdf.set_font("Arial", "", 9)
-    pdf.set_text_color(*TEXT)
-    pdf.set_x(60)
-    pdf.cell(0, 5, "College Road, Ludhiana, India 141001", ln=True)
-    pdf.set_x(60)
-    pdf.cell(0, 5, "Email: info@pristine.in | Website: www.pristinevacations.com", ln=True)
+    pdf.set_font("Times", "", 10)
+    pdf.set_text_color(*GREY_TEXT)
+    pdf.set_xy(100, 19)
+    pdf.multi_cell(100, 5, "College Road, Ludhiana, India 141001\ninfo@pristine.in | www.pristinevacations.com", align="R")
 
-    pdf.line(10, 32, 200, 32)
-    pdf.ln(10)
+    # Clean line pushed safely below the logo
+    pdf.set_draw_color(*GOLD)
+    pdf.line(10, 42, 200, 42)
+    pdf.set_y(50)
 
     # 2. Main Title
-    pdf.set_font("Arial", "B", 14)
-    pdf.set_text_color(*PRIMARY)
-    pdf.cell(0, 10, "HOTEL VOUCHER", ln=True, align="C")
-    pdf.ln(2)
+    pdf.set_font("Times", "B", 15)
+    pdf.set_text_color(*DARK_TEXT)
+    pdf.cell(0, 8, "HOTEL ACCOMMODATION VOUCHER", ln=True, align="C")
+    pdf.ln(6)
 
     # --- BLOCK 1: Conf & Status ---
-    pdf.set_font("Arial", "B", 9)
-    pdf.set_fill_color(*LIGHT_BG)
-    pdf.set_text_color(*TEXT)
-    pdf.cell(95, 7, " HOTEL CONFIRMATION NO.", border=1, fill=True)
-    pdf.cell(95, 7, " BOOKING STATUS", border=1, fill=True, ln=True)
+    pdf.set_fill_color(*LIGHT_GOLD)
+    pdf.set_font("Times", "B", 10)
+    pdf.cell(95, 8, " CONFIRMATION NO.", fill=True)
+    pdf.cell(95, 8, " BOOKING STATUS", fill=True, ln=True)
 
-    pdf.set_font("Arial", "", 10)
-    pdf.cell(95, 8, f" {conf_no}", border=1)
-    pdf.set_font("Arial", "B", 10)
-    pdf.cell(95, 8, " Confirmed & Guaranteed", border=1, ln=True)
-    pdf.ln(4)
+    pdf.set_font("Times", "", 11)
+    pdf.cell(95, 8, f" {conf_no}", fill=True)
+    pdf.set_font("Times", "B", 11)
+    pdf.set_text_color(*GOLD)
+    pdf.cell(95, 8, " Confirmed & Guaranteed", fill=True, ln=True)
+    pdf.ln(5)
 
-    # --- BLOCK 2: Property & Lead Passenger ---
-    pdf.set_font("Arial", "B", 9)
-    pdf.set_fill_color(*LIGHT_BG)
-    pdf.cell(95, 7, " PROPERTY DETAILS", border=1, fill=True)
-    pdf.cell(95, 7, " LEAD PASSENGER", border=1, fill=True, ln=True)
+    # --- BLOCK 2: Guest & Property ---
+    pdf.set_text_color(*DARK_TEXT)
+    pdf.set_font("Times", "B", 10)
+    pdf.cell(95, 8, " GUEST DETAILS", fill=True)
+    pdf.cell(95, 8, " PROPERTY DETAILS", fill=True, ln=True)
 
-    pdf.set_font("Arial", "", 9)
     x = pdf.get_x()
     y = pdf.get_y()
 
-    pdf.rect(x, y, 95, 18)
-    pdf.rect(x+95, y, 95, 18)
-
+    # Left Column: Guest
     pdf.set_xy(x+2, y+2)
-    pdf.multi_cell(90, 5, hotel_details)
-
-    pdf.set_xy(x+97, y+2)
-    pdf.set_font("Arial", "B", 10)
-    pdf.cell(90, 5, client_name, ln=True)
-    pdf.set_font("Arial", "", 9)
-    pdf.set_x(x+97)
+    pdf.set_font("Times", "B", 12)
+    pdf.cell(90, 6, client_name, ln=True)
+    pdf.set_font("Times", "", 10)
+    pdf.set_x(x+2)
     pdf.cell(90, 5, f"Confirmation Date: {datetime.date.today().strftime('%d %b %Y')}", ln=True)
 
-    pdf.set_y(y + 18 + 4)
+    # Right Column: Property
+    pdf.set_xy(x+97, y+2)
+    pdf.set_font("Times", "", 11)
+    pdf.multi_cell(90, 6, hotel_details)
+
+    pdf.set_y(max(pdf.get_y(), y + 15) + 6)
 
     # --- BLOCK 3: Dates ---
-    pdf.set_font("Arial", "B", 9)
-    pdf.set_fill_color(*DARK_BG)
+    pdf.set_fill_color(*GOLD)
     pdf.set_text_color(255, 255, 255)
-    pdf.cell(63, 7, "CHECK-IN", border=1, fill=True, align="C")
-    pdf.cell(64, 7, "NIGHTS", border=1, fill=True, align="C")
-    pdf.cell(63, 7, "CHECK-OUT", border=1, fill=True, align="C", ln=True)
+    pdf.set_font("Times", "B", 10)
+    pdf.cell(63, 8, "CHECK-IN", fill=True, align="C")
+    pdf.cell(64, 8, "NIGHTS", fill=True, align="C")
+    pdf.cell(63, 8, "CHECK-OUT", fill=True, align="C", ln=True)
 
-    pdf.set_font("Arial", "B", 11)
-    pdf.set_text_color(*TEXT)
-    pdf.cell(63, 9, check_in, border=1, align="C")
-    pdf.cell(64, 9, str(nights), border=1, align="C")
-    pdf.cell(63, 9, check_out, border=1, align="C", ln=True)
-    pdf.ln(4)
+    pdf.set_text_color(*DARK_TEXT)
+    pdf.set_font("Times", "", 12)
+    pdf.cell(63, 10, check_in, align="C")
+    pdf.cell(64, 10, str(nights), align="C")
+    pdf.cell(63, 10, check_out, align="C", ln=True)
+    pdf.ln(6)
 
-    # --- BLOCK 4: Arrival Info ---
-    pdf.set_font("Arial", "B", 9)
-    pdf.set_fill_color(*LIGHT_BG)
-    pdf.cell(0, 7, " ARRIVAL INFORMATION & NOTES:", border=1, fill=True, ln=True)
-    pdf.set_font("Arial", "", 9)
-    pdf.multi_cell(0, 6, f" {notes}", border=1)
-    pdf.ln(4)
+    # --- BLOCK 4: Room & Inclusions ---
+    pdf.set_fill_color(*LIGHT_GOLD)
+    pdf.set_font("Times", "B", 10)
+    pdf.cell(95, 8, " ROOM CATEGORY", fill=True)
+    pdf.cell(95, 8, " INCLUSIONS", fill=True, ln=True)
 
-    # --- BLOCK 5: Guest & Room ---
-    pdf.set_font("Arial", "B", 9)
-    pdf.set_fill_color(*LIGHT_BG)
-    pdf.cell(63, 7, " GUEST NAME", border=1, fill=True)
-    pdf.cell(64, 7, " ROOM CATEGORY", border=1, fill=True)
-    pdf.cell(63, 7, " INCLUSIONS", border=1, fill=True, ln=True)
-
-    pdf.set_font("Arial", "", 9)
     x = pdf.get_x()
     y = pdf.get_y()
-    
-    pdf.rect(x, y, 63, 25)
-    pdf.rect(x+63, y, 64, 25)
-    pdf.rect(x+127, y, 63, 25)
 
+    pdf.set_font("Times", "", 11)
     pdf.set_xy(x+2, y+2)
-    pdf.multi_cell(59, 5, client_name)
+    pdf.multi_cell(90, 6, room_type)
+    y_room = pdf.get_y()
 
-    pdf.set_xy(x+65, y+2)
-    pdf.multi_cell(60, 5, room_type)
+    pdf.set_xy(x+97, y+2)
+    pdf.multi_cell(90, 6, inclusions)
+    y_inc = pdf.get_y()
 
-    pdf.set_xy(x+129, y+2)
-    pdf.multi_cell(59, 5, inclusions)
+    pdf.set_y(max(y_room, y_inc) + 8)
 
-    pdf.set_y(y + 25 + 8)
+    # --- BLOCK 5: Notes & Info ---
+    if notes.strip():
+        pdf.set_font("Times", "B", 10)
+        pdf.cell(0, 6, "ARRIVAL & SPECIAL NOTES:", ln=True)
+        pdf.set_font("Times", "", 10)
+        pdf.multi_cell(0, 6, notes)
+        pdf.ln(6)
 
-    # --- BLOCK 6: Important Info (Fixed Bullet Points!) ---
-    pdf.set_font("Arial", "B", 10)
-    pdf.cell(0, 6, "Important Information:", ln=True)
-    pdf.set_font("Arial", "", 9)
-    
-    # We use hyphens (-) here instead of Unicode bullets (•)
+    pdf.set_font("Times", "B", 10)
+    pdf.cell(0, 6, "IMPORTANT INFORMATION:", ln=True)
+    pdf.set_font("Times", "", 10)
     safe_info = "- Please present this voucher and a valid Passport upon arrival.\n- Standard check-in time is 14:00 hrs and check-out is 12:00 hrs.\n- Incidental charges to be settled directly with the hotel."
-    pdf.multi_cell(0, 5, safe_info)
+    pdf.multi_cell(0, 6, safe_info)
 
+    # --- Footer ---
     pdf.ln(15)
-    pdf.set_font("Arial", "I", 9)
-    pdf.set_text_color(150, 150, 150)
-    pdf.cell(0, 5, "Luxury Travel Designed by Pristine Vacations | www.pristinevacations.com", align="C")
+    pdf.set_draw_color(*GOLD)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(5)
+    pdf.set_font("Times", "I", 10)
+    pdf.set_text_color(*GOLD)
+    
+    pdf.cell(0, 5, "Discover Luxury | www.discoverluxury.in | www.pristinevacations.com", align="C")
 
     return pdf.output(dest="S").encode("latin-1")
     
