@@ -63,6 +63,64 @@ try:
 except ImportError:
     pass # Will handle gracefully in the UI
 
+from fpdf import FPDF
+
+def create_voucher_pdf(client_name, ref_number, service_type, dates, details_text):
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # 1. Add Logo (if it exists in the folder)
+    if os.path.exists("logo.png"):
+        pdf.image("logo.png", x=10, y=8, w=50)
+    
+    # Header
+    pdf.set_font("Arial", "B", 20)
+    pdf.cell(0, 20, "CONFIRMATION VOUCHER", ln=True, align="R")
+    pdf.ln(10)
+    
+    # Client Info Block
+    pdf.set_fill_color(240, 240, 240) # Light grey background
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(40, 10, "Client Name:", border=1, fill=True)
+    pdf.set_font("Arial", "", 12)
+    pdf.cell(0, 10, f" {client_name}", border=1, ln=True)
+    
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(40, 10, "Booking Ref:", border=1, fill=True)
+    pdf.set_font("Arial", "", 12)
+    pdf.cell(0, 10, f" {ref_number}", border=1, ln=True)
+
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(40, 10, "Travel Dates:", border=1, fill=True)
+    pdf.set_font("Arial", "", 12)
+    pdf.cell(0, 10, f" {dates}", border=1, ln=True)
+    
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(40, 10, "Service Type:", border=1, fill=True)
+    pdf.set_font("Arial", "", 12)
+    pdf.cell(0, 10, f" {service_type}", border=1, ln=True)
+    
+    pdf.ln(10)
+    
+    # Main Voucher Text
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "Service & Confirmation Details:", ln=True)
+    pdf.set_font("Arial", "", 11)
+    
+    # Multi_cell allows the text to wrap to the next line naturally
+    pdf.multi_cell(0, 7, details_text)
+    
+    pdf.ln(20)
+    
+    # Footer
+    pdf.set_font("Arial", "I", 10)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 10, "Thank you for booking with Pristine Vacations. Wishing you a wonderful trip!", align="C", ln=True)
+    pdf.cell(0, 10, "Emergency Contact: +91 [YOUR NUMBER] | Email: [YOUR EMAIL]", align="C")
+    
+    # Output as a byte string for Streamlit download
+    return pdf.output(dest="S").encode("latin-1")
+    
 # ===============================
 # 4. OFFICIAL GOOGLE AI ENGINE (SECRETS ONLY)
 # ===============================
@@ -133,7 +191,7 @@ if os.path.exists("logo.png"):
     st.sidebar.image("logo.png", width=200)
 
 st.sidebar.title("Navigation")
-menu = st.sidebar.radio("Go to:", ["Dashboard", "New Enquiry", "AI Itinerary Builder"])
+menu = st.sidebar.radio("Go to:", ["Dashboard", "New Enquiry", "AI Itinerary Builder", "Voucher Generator"])
 
 # ===============================
 # PAGE: DASHBOARD
@@ -297,3 +355,58 @@ elif menu == "AI Itinerary Builder":
                         st.download_button(label="Click to Save PDF", data=pdf_data, file_name=f"Quote_{selected_query.lead.name}.pdf", mime="application/pdf")
                     except Exception as e:
                         st.error("Cannot create PDF. Ensure 'pdf_maker.py' is in the same folder.")
+
+
+    # ===============================
+# PAGE: VOUCHER GENERATOR
+# ===============================
+elif menu == "Voucher Generator":
+    st.header("🎟️ Standardized Voucher Generator")
+    st.write("Generate a quick PDF confirmation voucher for your clients.")
+    
+    with st.container(border=True):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            v_client = st.text_input("Client Name", placeholder="e.g., Mr. Pankaj Kashyap")
+            v_ref = st.text_input("Booking Reference / PNR", placeholder="e.g., PRIS-88392")
+            
+        with col2:
+            v_service = st.selectbox("Service Type", ["Flight Ticket", "Hotel Accommodation", "Complete Package", "Transfer/Sightseeing"])
+            v_dates = st.text_input("Travel Dates", placeholder="e.g., 12 Oct 2026 - 15 Oct 2026")
+
+        st.markdown("---")
+        st.subheader("Voucher Details")
+        st.caption("Paste the hotel confirmation, flight times, or inclusions here.")
+        
+        default_text = """Hotel Name: 
+Check-in: 
+Check-out: 
+Room Type: 
+Meal Plan: 
+
+Confirmation Number: 
+Status: CONFIRMED
+
+Important Notes:
+- Please present a valid ID at the time of check-in.
+- Standard check-in time is 14:00 hrs."""
+        
+        v_details = st.text_area("Details", value=default_text, height=250)
+        
+        if st.button("📄 Generate Voucher PDF", type="primary"):
+            if v_client and v_ref:
+                try:
+                    pdf_bytes = create_voucher_pdf(v_client, v_ref, v_service, v_dates, v_details)
+                    st.success("Voucher generated successfully!")
+                    
+                    st.download_button(
+                        label="⬇️ Download Voucher PDF",
+                        data=pdf_bytes,
+                        file_name=f"Voucher_{v_client.replace(' ', '_')}.pdf",
+                        mime="application/pdf"
+                    )
+                except Exception as e:
+                    st.error(f"Error generating PDF: {str(e)}. Make sure 'fpdf' is installed.")
+            else:
+                st.warning("Please enter the Client Name and Booking Reference.")
