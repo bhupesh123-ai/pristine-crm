@@ -150,9 +150,7 @@ def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out,
     pdf.set_x(x+2)
     pdf.cell(90, 5, f"Rooms: {num_rooms} | Guests: {num_adults} Adult(s), {num_children} Child(ren)", ln=True)
     
-    # Restored Confirmation Date
-    pdf.set_x(x+2)
-    pdf.cell(90, 5, f"Confirmation Date: {datetime.date.today().strftime('%d %b %Y')}", ln=True)
+    )
 
     # Right Column: Property
     pdf.set_xy(x+97, y+2)
