@@ -65,60 +65,140 @@ except ImportError:
 
 from fpdf import FPDF
 
-def create_voucher_pdf(client_name, ref_number, service_type, dates, details_text):
-    pdf = FPDF()
+def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out, nights, room_type, inclusions, notes):
+    pdf = FPDF('P', 'mm', 'A4')
     pdf.add_page()
     
-    # 1. Add Logo (if it exists in the folder)
-    if os.path.exists("logo.png"):
-        pdf.image("logo.png", x=10, y=8, w=50)
-    
-    # Header
-    pdf.set_font("Arial", "B", 20)
-    pdf.cell(0, 20, "CONFIRMATION VOUCHER", ln=True, align="R")
-    pdf.ln(10)
-    
-    # Client Info Block
-    pdf.set_fill_color(240, 240, 240) # Light grey background
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(40, 10, "Client Name:", border=1, fill=True)
-    pdf.set_font("Arial", "", 12)
-    pdf.cell(0, 10, f" {client_name}", border=1, ln=True)
-    
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(40, 10, "Booking Ref:", border=1, fill=True)
-    pdf.set_font("Arial", "", 12)
-    pdf.cell(0, 10, f" {ref_number}", border=1, ln=True)
+    # Brand Colors
+    PRIMARY = (41, 128, 185)   # Pristine Blue
+    DARK_BG = (41, 128, 185)   # Table Header Blue
+    LIGHT_BG = (236, 240, 241) # Light Grey Fill
+    TEXT = (40, 40, 40)        # Dark Grey Text
 
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(40, 10, "Travel Dates:", border=1, fill=True)
-    pdf.set_font("Arial", "", 12)
-    pdf.cell(0, 10, f" {dates}", border=1, ln=True)
-    
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(40, 10, "Service Type:", border=1, fill=True)
-    pdf.set_font("Arial", "", 12)
-    pdf.cell(0, 10, f" {service_type}", border=1, ln=True)
-    
+    # 1. Header (Logo & Company Info)
+    if os.path.exists("logo.png"):
+        pdf.image("logo.png", x=10, y=10, w=40)
+
+    pdf.set_font("Arial", "B", 15)
+    pdf.set_text_color(*PRIMARY)
+    pdf.set_xy(60, 12)
+    pdf.cell(0, 6, "PRISTINE VACATIONS", ln=True)
+
+    pdf.set_font("Arial", "", 9)
+    pdf.set_text_color(*TEXT)
+    pdf.set_x(60)
+    pdf.cell(0, 5, "College Road, Ludhiana, India 141001", ln=True)
+    pdf.set_x(60)
+    pdf.cell(0, 5, "Email: info@pristine.in | Website: www.pristinevacations.com", ln=True)
+
+    pdf.line(10, 32, 200, 32)
     pdf.ln(10)
-    
-    # Main Voucher Text
+
+    # 2. Main Title
     pdf.set_font("Arial", "B", 14)
-    pdf.cell(0, 10, "Service & Confirmation Details:", ln=True)
-    pdf.set_font("Arial", "", 11)
+    pdf.set_text_color(*PRIMARY)
+    pdf.cell(0, 10, "HOTEL VOUCHER", ln=True, align="C")
+    pdf.ln(2)
+
+    # --- BLOCK 1: Conf & Status ---
+    pdf.set_font("Arial", "B", 9)
+    pdf.set_fill_color(*LIGHT_BG)
+    pdf.set_text_color(*TEXT)
+    pdf.cell(95, 7, " HOTEL CONFIRMATION NO.", border=1, fill=True)
+    pdf.cell(95, 7, " BOOKING STATUS", border=1, fill=True, ln=True)
+
+    pdf.set_font("Arial", "", 10)
+    pdf.cell(95, 8, f" {conf_no}", border=1)
+    pdf.set_font("Arial", "B", 10)
+    pdf.cell(95, 8, " Confirmed & Guaranteed", border=1, ln=True)
+    pdf.ln(4)
+
+    # --- BLOCK 2: Property & Lead Passenger ---
+    pdf.set_font("Arial", "B", 9)
+    pdf.set_fill_color(*LIGHT_BG)
+    pdf.cell(95, 7, " PROPERTY DETAILS", border=1, fill=True)
+    pdf.cell(95, 7, " LEAD PASSENGER", border=1, fill=True, ln=True)
+
+    pdf.set_font("Arial", "", 9)
+    x = pdf.get_x()
+    y = pdf.get_y()
+
+    # Draw strict borders for clean alignment
+    pdf.rect(x, y, 95, 18)
+    pdf.rect(x+95, y, 95, 18)
+
+    pdf.set_xy(x+2, y+2)
+    pdf.multi_cell(90, 5, hotel_details)
+
+    pdf.set_xy(x+97, y+2)
+    pdf.set_font("Arial", "B", 10)
+    pdf.cell(90, 5, client_name, ln=True)
+    pdf.set_font("Arial", "", 9)
+    pdf.set_x(x+97)
+    pdf.cell(90, 5, f"Confirmation Date: {datetime.date.today().strftime('%d %b %Y')}", ln=True)
+
+    pdf.set_y(y + 18 + 4)
+
+    # --- BLOCK 3: Dates ---
+    pdf.set_font("Arial", "B", 9)
+    pdf.set_fill_color(*DARK_BG)
+    pdf.set_text_color(255, 255, 255)
+    pdf.cell(63, 7, "CHECK-IN", border=1, fill=True, align="C")
+    pdf.cell(64, 7, "NIGHTS", border=1, fill=True, align="C")
+    pdf.cell(63, 7, "CHECK-OUT", border=1, fill=True, align="C", ln=True)
+
+    pdf.set_font("Arial", "B", 11)
+    pdf.set_text_color(*TEXT)
+    pdf.cell(63, 9, check_in, border=1, align="C")
+    pdf.cell(64, 9, str(nights), border=1, align="C")
+    pdf.cell(63, 9, check_out, border=1, align="C", ln=True)
+    pdf.ln(4)
+
+    # --- BLOCK 4: Arrival Info ---
+    pdf.set_font("Arial", "B", 9)
+    pdf.set_fill_color(*LIGHT_BG)
+    pdf.cell(0, 7, " ARRIVAL INFORMATION & NOTES:", border=1, fill=True, ln=True)
+    pdf.set_font("Arial", "", 9)
+    pdf.multi_cell(0, 6, f" {notes}", border=1)
+    pdf.ln(4)
+
+    # --- BLOCK 5: Guest & Room (The Table) ---
+    pdf.set_font("Arial", "B", 9)
+    pdf.set_fill_color(*LIGHT_BG)
+    pdf.cell(63, 7, " GUEST NAME", border=1, fill=True)
+    pdf.cell(64, 7, " ROOM CATEGORY", border=1, fill=True)
+    pdf.cell(63, 7, " INCLUSIONS", border=1, fill=True, ln=True)
+
+    pdf.set_font("Arial", "", 9)
+    x = pdf.get_x()
+    y = pdf.get_y()
     
-    # Multi_cell allows the text to wrap to the next line naturally
-    pdf.multi_cell(0, 7, details_text)
-    
-    pdf.ln(20)
-    
-    # Footer
-    pdf.set_font("Arial", "I", 10)
-    pdf.set_text_color(100, 100, 100)
-    pdf.cell(0, 10, "Thank you for booking with Pristine Vacations. Wishing you a wonderful trip!", align="C", ln=True)
-    pdf.cell(0, 10, "Emergency Contact: +91 [YOUR NUMBER] | Email: [YOUR EMAIL]", align="C")
-    
-    # Output as a byte string for Streamlit download
+    pdf.rect(x, y, 63, 25)
+    pdf.rect(x+63, y, 64, 25)
+    pdf.rect(x+127, y, 63, 25)
+
+    pdf.set_xy(x+2, y+2)
+    pdf.multi_cell(59, 5, client_name)
+
+    pdf.set_xy(x+65, y+2)
+    pdf.multi_cell(60, 5, room_type)
+
+    pdf.set_xy(x+129, y+2)
+    pdf.multi_cell(59, 5, inclusions)
+
+    pdf.set_y(y + 25 + 8)
+
+    # --- BLOCK 6: Important Info ---
+    pdf.set_font("Arial", "B", 10)
+    pdf.cell(0, 6, "Important Information:", ln=True)
+    pdf.set_font("Arial", "", 9)
+    pdf.multi_cell(0, 5, "• Please present this voucher and a valid Passport upon arrival.\n• Standard check-in time is 14:00 hrs and check-out is 12:00 hrs.\n• Incidental charges to be settled directly with the hotel.")
+
+    pdf.ln(15)
+    pdf.set_font("Arial", "I", 9)
+    pdf.set_text_color(150, 150, 150)
+    pdf.cell(0, 5, "Luxury Travel Designed by Pristine Vacations | www.pristinevacations.com", align="C")
+
     return pdf.output(dest="S").encode("latin-1")
     
 # ===============================
@@ -357,56 +437,67 @@ elif menu == "AI Itinerary Builder":
                         st.error("Cannot create PDF. Ensure 'pdf_maker.py' is in the same folder.")
 
 
-    # ===============================
-# PAGE: VOUCHER GENERATOR
+# ===============================
+# PAGE: PREMIUM VOUCHER GENERATOR
 # ===============================
 elif menu == "Voucher Generator":
-    st.header("🎟️ Standardized Voucher Generator")
-    st.write("Generate a quick PDF confirmation voucher for your clients.")
-    
+    st.header("🎟️ Premium Hotel Voucher")
+    st.write("Generate a beautifully formatted hotel confirmation voucher.")
+
     with st.container(border=True):
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            v_client = st.text_input("Client Name", placeholder="e.g., Mr. Pankaj Kashyap")
-            v_ref = st.text_input("Booking Reference / PNR", placeholder="e.g., PRIS-88392")
+        st.subheader("1. Guest & Booking Details")
+        c1, c2, c3 = st.columns(3)
+        v_client = c1.text_input("Lead Passenger Name", placeholder="e.g. Mr. Arjun Singh Rawat")
+        v_conf = c2.text_input("Hotel Confirmation No.", placeholder="e.g. TBR7CNFIWO50...")
+        v_hotel = c3.text_area("Property Name & Address", height=68, placeholder="Citadines Sukhumvit 11\nBangkok 10110, Thailand")
+
+        st.subheader("2. Travel Dates")
+        d1, d2, d3 = st.columns(3)
+        v_in = d1.date_input("Check-In Date")
+        v_out = d2.date_input("Check-Out Date")
+
+        # Calculate total nights automatically
+        nights = 0
+        if v_in and v_out:
+            nights = (v_out - v_in).days
+            if nights < 0: nights = 0
             
-        with col2:
-            v_service = st.selectbox("Service Type", ["Flight Ticket", "Hotel Accommodation", "Complete Package", "Transfer/Sightseeing"])
-            v_dates = st.text_input("Travel Dates", placeholder="e.g., 12 Oct 2026 - 15 Oct 2026")
+        d3.metric("Total Nights", nights)
 
-        st.markdown("---")
-        st.subheader("Voucher Details")
-        st.caption("Paste the hotel confirmation, flight times, or inclusions here.")
-        
-        default_text = """Hotel Name: 
-Check-in: 
-Check-out: 
-Room Type: 
-Meal Plan: 
+        st.subheader("3. Room & Inclusions")
+        r1, r2 = st.columns(2)
+        v_room = r1.text_area("Room Category", placeholder="Studio Executive\n30 sqm | Queen Bed", height=100)
+        v_inc = r2.text_area("Inclusions", placeholder="Daily Breakfast\nFree WiFi", height=100)
 
-Confirmation Number: 
-Status: CONFIRMED
+        v_notes = st.text_input("Arrival Information & Notes", placeholder="Arrival on 20th April at 05:00 HRS. Room is pre-booked...")
 
-Important Notes:
-- Please present a valid ID at the time of check-in.
-- Standard check-in time is 14:00 hrs."""
-        
-        v_details = st.text_area("Details", value=default_text, height=250)
-        
-        if st.button("📄 Generate Voucher PDF", type="primary"):
-            if v_client and v_ref:
+        if st.button("📄 Generate Premium Voucher", type="primary"):
+            if v_client and v_conf and v_hotel:
+                # Format dates to string "19 Apr 2026"
+                in_str = v_in.strftime("%d %b %Y")
+                out_str = v_out.strftime("%d %b %Y")
+
                 try:
-                    pdf_bytes = create_voucher_pdf(v_client, v_ref, v_service, v_dates, v_details)
-                    st.success("Voucher generated successfully!")
-                    
+                    pdf_bytes = create_voucher_pdf(
+                        client_name=v_client,
+                        conf_no=v_conf,
+                        hotel_details=v_hotel,
+                        check_in=in_str,
+                        check_out=out_str,
+                        nights=nights,
+                        room_type=v_room,
+                        inclusions=v_inc,
+                        notes=v_notes
+                    )
+                    st.success("Premium Voucher generated successfully!")
+
                     st.download_button(
-                        label="⬇️ Download Voucher PDF",
+                        label="⬇️ Download Premium Voucher",
                         data=pdf_bytes,
-                        file_name=f"Voucher_{v_client.replace(' ', '_')}.pdf",
+                        file_name=f"Hotel_Voucher_{v_client.replace(' ', '_')}.pdf",
                         mime="application/pdf"
                     )
                 except Exception as e:
-                    st.error(f"Error generating PDF: {str(e)}. Make sure 'fpdf' is installed.")
+                    st.error(f"Error generating PDF: {str(e)}")
             else:
-                st.warning("Please enter the Client Name and Booking Reference.")
+                st.warning("⚠️ Please fill in the Lead Passenger, Confirmation No, and Property Details.")
