@@ -69,67 +69,67 @@ except ImportError:
 
 
 # ===============================
-# 5. THE AI "WATERFALL" ENGINE (DEEP DIAGNOSTICS)
+# 5. OFFICIAL GOOGLE AI ENGINE (SELF-HEALING)
 # ===============================
 import time
-import requests # Just making sure this is imported
+import google.generativeai as genai
+from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
 def generate_itinerary_free(prompt_text):
-    if not GOOGLE_KEY:
-        return None, "Google Key is missing."
+    # 1. Load and clean the API key
+    try:
+        clean_key = st.secrets["GOOGLE_API_KEY"].strip()
+    except:
+        # Paste your key below for testing
+        clean_key = "PASTE_YOUR_KEY_HERE".strip() 
 
-    fallback_models = [
-        "gemini-1.5-flash-latest",
-        "gemini-1.5-flash-002",
-        "gemini-1.5-flash",
-        "gemini-1.0-pro-latest"
-    ]
+    if not clean_key or clean_key == "PASTE_YOUR_KEY_HERE":
+        return None, "API Key is missing."
 
-    headers = {'Content-Type': 'application/json'}
-    data = {"contents": [{"parts": [{"text": prompt_text}]}]}
+    genai.configure(api_key=clean_key)
     
-    # We will store the exact complaints from Google here
-    error_logs = []
-
-    for model_id in fallback_models:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent?key={GOOGLE_KEY}"
-
-        for attempt in range(2):
-            try:
-                response = requests.post(url, headers=headers, json=data, timeout=30)
+    # 2. AUTO-DISCOVERY: Ask Google what models this key is allowed to use
+    try:
+        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        
+        # Priority list (it will pick the best one your key has access to)
+        chosen_model = None
+        for preferred in ['models/gemini-1.5-flash', 'models/gemini-1.5-flash-latest', 'models/gemini-1.0-pro', 'models/gemini-pro']:
+            if preferred in available_models:
+                chosen_model = preferred
+                break
                 
-                # 1. SUCCESS
-                if response.status_code == 200:
-                    return response.json()['candidates'][0]['content']['parts'][0]['text'], f"Success ({model_id})"
-                
-                # 2. QUOTA OR BUSY
-                elif response.status_code == 429:
-                    # Capture the exact Google error message before retrying
-                    try:
-                        error_msg = response.json()['error']['message']
-                    except:
-                        error_msg = response.text
-                        
-                    error_logs.append(f"{model_id} attempt {attempt+1} failed: {error_msg}")
-                    time.sleep(5) # Wait 5 seconds this time
-                    continue 
-                    
-                elif response.status_code == 503:
-                    time.sleep(5)
-                    continue
-                    
-                # 3. HARD ERROR
-                else:
-                    error_logs.append(f"{model_id} threw Error {response.status_code}")
-                    break 
-                    
-            except Exception as e:
-                time.sleep(2)
-                continue
+        if not chosen_model:
+            return None, "Your API key does not have access to any text generation models."
+            
+    except Exception as e:
+        return None, f"Failed to connect to Google: {str(e)}"
 
-    # If we get here, ALL models failed. Let's print the receipts.
-    debug_output = "\n".join(error_logs)
-    return None, f"🚨 DIAGNOSTIC REPORT 🚨\n\nGoogle rejected all requests. Here is exactly what they said:\n\n{debug_output}"
+    # 3. Configure the chosen model
+    # Strip the 'models/' prefix because the library adds it automatically
+    clean_model_name = chosen_model.replace('models/', '')
+    model = genai.GenerativeModel(clean_model_name)
+
+    # 4. Generate with Auto-Retries
+    for attempt in range(3):
+        try:
+            response = model.generate_content(prompt_text)
+            return response.text, f"Success (Used: {clean_model_name})"
+            
+        except ResourceExhausted:
+            print(f"Quota hit. Waiting 5 seconds (Attempt {attempt+1}/3)...")
+            time.sleep(5)
+            continue
+            
+        except ServiceUnavailable:
+            print(f"Server busy. Waiting 5 seconds (Attempt {attempt+1}/3)...")
+            time.sleep(5)
+            continue
+            
+        except Exception as e:
+            return None, f"Google Error: {str(e)}"
+
+    return None, "Google's servers are too busy right now. Please wait 30 seconds and try again."
 # ===============================
 # 6. SIDEBAR & NAVIGATION
 # ===============================
