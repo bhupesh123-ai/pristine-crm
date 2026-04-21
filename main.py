@@ -71,15 +71,15 @@ except ImportError:
 
 
 # ===============================
-# 5. THE AI "WATERFALL" ENGINE (ANTI-QUOTA SYSTEM)
+# 5. THE AI "WATERFALL" ENGINE (DEEP DIAGNOSTICS)
 # ===============================
 import time
+import requests # Just making sure this is imported
 
 def generate_itinerary_free(prompt_text):
     if not GOOGLE_KEY:
         return None, "Google Key is missing."
 
-    # The Waterfall List: If model 1 is full, instantly try model 2, then model 3.
     fallback_models = [
         "gemini-1.5-flash",
         "gemini-1.0-pro",
@@ -88,12 +88,13 @@ def generate_itinerary_free(prompt_text):
 
     headers = {'Content-Type': 'application/json'}
     data = {"contents": [{"parts": [{"text": prompt_text}]}]}
+    
+    # We will store the exact complaints from Google here
+    error_logs = []
 
-    # Go through our list of models one by one
     for model_id in fallback_models:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent?key={GOOGLE_KEY}"
 
-        # Give each model 2 attempts to answer
         for attempt in range(2):
             try:
                 response = requests.post(url, headers=headers, json=data, timeout=30)
@@ -102,22 +103,34 @@ def generate_itinerary_free(prompt_text):
                 if response.status_code == 200:
                     return response.json()['candidates'][0]['content']['parts'][0]['text'], f"Success ({model_id})"
                 
-                # 2. QUOTA EXCEEDED (429) OR BUSY (503)
-                elif response.status_code in [429, 503]:
-                    time.sleep(3) # Wait 3 seconds to let Google's free quota refill slightly
-                    continue # Try this specific model one more time
+                # 2. QUOTA OR BUSY
+                elif response.status_code == 429:
+                    # Capture the exact Google error message before retrying
+                    try:
+                        error_msg = response.json()['error']['message']
+                    except:
+                        error_msg = response.text
+                        
+                    error_logs.append(f"{model_id} attempt {attempt+1} failed: {error_msg}")
+                    time.sleep(5) # Wait 5 seconds this time
+                    continue 
                     
-                # 3. HARD ERROR (Model doesn't exist for this key, etc.)
+                elif response.status_code == 503:
+                    time.sleep(5)
+                    continue
+                    
+                # 3. HARD ERROR
                 else:
-                    break # Stop trying this model, immediately move to the next model in the list
+                    error_logs.append(f"{model_id} threw Error {response.status_code}")
+                    break 
                     
             except Exception as e:
-                # Network glitch
                 time.sleep(2)
                 continue
 
-    # If the code reaches the very bottom, ALL models failed all their attempts
-    return None, "Google's Free Tier is taking a mandatory 1-minute breather. Please wait 60 seconds and click Generate again."
+    # If we get here, ALL models failed. Let's print the receipts.
+    debug_output = "\n".join(error_logs)
+    return None, f"🚨 DIAGNOSTIC REPORT 🚨\n\nGoogle rejected all requests. Here is exactly what they said:\n\n{debug_output}"
 # ===============================
 # 6. SIDEBAR & NAVIGATION
 # ===============================
