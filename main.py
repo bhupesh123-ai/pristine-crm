@@ -84,7 +84,6 @@ def generate_itinerary_free(prompt_text):
         "gemini-1.5-flash",
         "gemini-1.0-pro-latest"
     ]
-    ]
 
     headers = {'Content-Type': 'application/json'}
     data = {"contents": [{"parts": [{"text": prompt_text}]}]}
