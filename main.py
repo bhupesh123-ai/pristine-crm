@@ -83,7 +83,14 @@ def generate_itinerary_free(prompt_text):
         available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         
         chosen_model = None
-        for preferred in ['models/gemini-1.5-flash', 'models/gemini-1.5-flash-latest', 'models/gemini-1.0-pro', 'models/gemini-pro']:
+        # UPDATED: Looking for the new 2.5 and 2.0 models that your key actually has
+        for preferred in [
+            'models/gemini-2.5-flash', 
+            'models/gemini-2.0-flash',
+            'models/gemini-flash-latest',
+            'models/gemini-2.5-pro',
+            'models/gemini-pro-latest'
+        ]:
             if preferred in available_models:
                 chosen_model = preferred
                 break
@@ -93,10 +100,6 @@ def generate_itinerary_free(prompt_text):
             
     except Exception as e:
         return None, f"Failed to connect to Google: {str(e)}"
-
-    # 3. Configure the chosen model
-    clean_model_name = chosen_model.replace('models/', '')
-    model = genai.GenerativeModel(clean_model_name)
 
     # 4. Generate with Auto-Retries (Bypasses 503 & 429 errors)
     for attempt in range(3):
