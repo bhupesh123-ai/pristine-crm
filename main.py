@@ -106,7 +106,7 @@ def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out,
     pdf.set_font("Times", "", 10)
     pdf.set_text_color(*GREY_TEXT)
     pdf.set_xy(100, 19)
-    pdf.multi_cell(100, 5, "College Road, Ludhiana, India 141001\ninfo@pristine.in | www.pristinevacations.com", align="R")
+    pdf.multi_cell(100, 5, "College Road, Ludhiana, India 141001\+91 161 4613384\ninfo@pristine.in | www.pristinevacations.com", align="R")
 
     # Clean line pushed safely below the logo
     pdf.set_draw_color(*GOLD)
@@ -147,7 +147,7 @@ def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out,
     pdf.cell(90, 6, client_name, ln=True)
     pdf.set_font("Times", "", 10)
     pdf.set_x(x+2)
-    pdf.cell(90, 5, f"Confirmation Date: {datetime.date.today().strftime('%d %b %Y')}", ln=True)
+
 
     # Right Column: Property
     pdf.set_xy(x+97, y+2)
@@ -213,7 +213,7 @@ def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out,
     pdf.set_font("Times", "I", 10)
     pdf.set_text_color(*GOLD)
     
-    pdf.cell(0, 5, "Discover Luxury | www.discoverluxury.in | www.pristinevacations.com", align="C")
+    pdf.cell(0, 5, "PRISTINE VACATIONS | www.pristinevacations.com", align="C")
 
     return pdf.output(dest="S").encode("latin-1")
     
