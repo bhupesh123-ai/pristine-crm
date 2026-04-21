@@ -67,7 +67,7 @@ from fpdf import FPDF
 import os
 import datetime
 
-def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out, nights, room_type, inclusions, notes):
+def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out, nights, room_type, inclusions, notes, num_rooms, num_adults, num_children):
     
     def clean(text):
         if not text: return ""
@@ -94,7 +94,6 @@ def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out,
 
     # 1. Header (Fixed Logo Height & Spacing)
     if os.path.exists("logo.png"):
-        # By setting 'h' instead of 'w', the logo anchors neatly at the top
         pdf.image("logo.png", x=10, y=10, h=25)
 
     # Right-aligned Company Details using Serif Font
@@ -106,7 +105,7 @@ def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out,
     pdf.set_font("Times", "", 10)
     pdf.set_text_color(*GREY_TEXT)
     pdf.set_xy(100, 19)
-    pdf.multi_cell(100, 5, "College Road, Ludhiana, India 141001\+91 161 4613384\ninfo@pristine.in | www.pristinevacations.com", align="R")
+    pdf.multi_cell(100, 5, "College Road, Ludhiana, India 141001\n+91 161 4613384\ninfo@pristine.in | www.pristinevacations.com", align="R")
 
     # Clean line pushed safely below the logo
     pdf.set_draw_color(*GOLD)
@@ -145,16 +144,22 @@ def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out,
     pdf.set_xy(x+2, y+2)
     pdf.set_font("Times", "B", 12)
     pdf.cell(90, 6, client_name, ln=True)
+    
+    # NEW: Rooms and Occupancy
     pdf.set_font("Times", "", 10)
     pdf.set_x(x+2)
-
+    pdf.cell(90, 5, f"Rooms: {num_rooms} | Guests: {num_adults} Adult(s), {num_children} Child(ren)", ln=True)
+    
+    # Restored Confirmation Date
+    pdf.set_x(x+2)
+    pdf.cell(90, 5, f"Confirmation Date: {datetime.date.today().strftime('%d %b %Y')}", ln=True)
 
     # Right Column: Property
     pdf.set_xy(x+97, y+2)
     pdf.set_font("Times", "", 11)
     pdf.multi_cell(90, 6, hotel_details)
 
-    pdf.set_y(max(pdf.get_y(), y + 15) + 6)
+    pdf.set_y(max(pdf.get_y(), y + 18) + 6)
 
     # --- BLOCK 3: Dates ---
     pdf.set_fill_color(*GOLD)
@@ -202,7 +207,7 @@ def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out,
     pdf.set_font("Times", "B", 10)
     pdf.cell(0, 6, "IMPORTANT INFORMATION:", ln=True)
     pdf.set_font("Times", "", 10)
-    safe_info = "- Please present this voucher and a valid Passport upon arrival.\n- Standard check-in time is 14:00 hrs and check-out is 12:00 hrs.\n- Incidental charges to be settled directly with the hotel."
+    safe_info = "- Please present this voucher and a valid Passport/ID upon arrival.\n- Standard check-in time is 14:00 /15:00 hrs and check-out is 12:00 hrs.\n- Incidental charges/City Tax/ Resort Fee to be settled directly with the hotel."
     pdf.multi_cell(0, 6, safe_info)
 
     # --- Footer ---
@@ -462,17 +467,24 @@ elif menu == "Voucher Generator":
 
     with st.container(border=True):
         st.subheader("1. Guest & Booking Details")
+        
+        # Row 1: Names and Booking references
         c1, c2, c3 = st.columns(3)
         v_client = c1.text_input("Lead Passenger Name", placeholder="e.g. Mr. Arjun Singh Rawat")
         v_conf = c2.text_input("Hotel Confirmation No.", placeholder="e.g. TBR7CNFIWO50...")
         v_hotel = c3.text_area("Property Name & Address", height=68, placeholder="Citadines Sukhumvit 11\nBangkok 10110, Thailand")
+
+        # Row 2: Occupancy Numbers (NEW)
+        c4, c5, c6 = st.columns(3)
+        v_rooms = c4.number_input("Number of Rooms", min_value=1, value=1)
+        v_adults = c5.number_input("Number of Adults", min_value=1, value=2)
+        v_children = c6.number_input("Number of Children", min_value=0, value=0)
 
         st.subheader("2. Travel Dates")
         d1, d2, d3 = st.columns(3)
         v_in = d1.date_input("Check-In Date")
         v_out = d2.date_input("Check-Out Date")
 
-        # Calculate total nights automatically
         nights = 0
         if v_in and v_out:
             nights = (v_out - v_in).days
@@ -489,11 +501,11 @@ elif menu == "Voucher Generator":
 
         if st.button("📄 Generate Premium Voucher", type="primary"):
             if v_client and v_conf and v_hotel:
-                # Format dates to string "19 Apr 2026"
                 in_str = v_in.strftime("%d %b %Y")
                 out_str = v_out.strftime("%d %b %Y")
 
                 try:
+                    # Pass the 3 new number variables into the function
                     pdf_bytes = create_voucher_pdf(
                         client_name=v_client,
                         conf_no=v_conf,
@@ -503,7 +515,10 @@ elif menu == "Voucher Generator":
                         nights=nights,
                         room_type=v_room,
                         inclusions=v_inc,
-                        notes=v_notes
+                        notes=v_notes,
+                        num_rooms=v_rooms,
+                        num_adults=v_adults,
+                        num_children=v_children
                     )
                     st.success("Premium Voucher generated successfully!")
 
