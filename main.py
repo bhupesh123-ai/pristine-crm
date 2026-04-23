@@ -87,16 +87,15 @@ def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out,
     pdf.add_page()
     
     # --- Ultra-Minimal Palette ---
-    GOLD = (186, 163, 104)       # Matte Champagne Gold
-    LIGHT_GOLD = (250, 248, 242) # Extremely subtle gold-tinted grey
+    GOLD = (186, 163, 104)       
+    LIGHT_GOLD = (250, 248, 242) 
     DARK_TEXT = (40, 40, 40)
     GREY_TEXT = (100, 100, 100)
 
-    # 1. Header (Fixed Logo Height & Spacing)
+    # 1. Header 
     if os.path.exists("logo.png"):
         pdf.image("logo.png", x=10, y=10, h=25)
 
-    # Right-aligned Company Details using Serif Font
     pdf.set_font("Times", "B", 18)
     pdf.set_text_color(*GOLD)
     pdf.set_xy(100, 12)
@@ -107,7 +106,6 @@ def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out,
     pdf.set_xy(100, 19)
     pdf.multi_cell(100, 5, "College Road, Ludhiana, India 141001\n+91 161 4613384\ninfo@pristine.in | www.pristinevacations.com", align="R")
 
-    # Clean line pushed safely below the logo
     pdf.set_draw_color(*GOLD)
     pdf.line(10, 42, 200, 42)
     pdf.set_y(50)
@@ -131,7 +129,7 @@ def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out,
     pdf.cell(95, 8, " Confirmed & Guaranteed", fill=True, ln=True)
     pdf.ln(5)
 
-    # --- BLOCK 2: Guest & Property ---
+    # --- BLOCK 2: Guest & Property (UPDATED) ---
     pdf.set_text_color(*DARK_TEXT)
     pdf.set_font("Times", "B", 10)
     pdf.cell(95, 8, " GUEST DETAILS", fill=True)
@@ -140,24 +138,48 @@ def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out,
     x = pdf.get_x()
     y = pdf.get_y()
 
-    # Left Column: Guest
+    # --- Left Column: Guest ---
     pdf.set_xy(x+2, y+2)
     pdf.set_font("Times", "B", 12)
-    pdf.cell(90, 6, client_name, ln=True)
     
-    # NEW: Rooms and Occupancy
+    # Changed to multi_cell so long lists of names wrap cleanly!
+    pdf.multi_cell(90, 6, client_name) 
+    
+    # Track the Y position so the next lines push down automatically
+    y_current = pdf.get_y() 
+    pdf.set_xy(x+2, y_current + 2)
+
+    # Rooms & Guests split clearly
+    pdf.set_font("Times", "B", 10)
+    pdf.cell(90, 5, f"Total Rooms: {num_rooms}", ln=True)
     pdf.set_font("Times", "", 10)
     pdf.set_x(x+2)
-    pdf.cell(90, 5, f"Rooms: {num_rooms} | Guests: {num_adults} Adult(s), {num_children} Child(ren)", ln=True)
+    pdf.cell(90, 5, f"Total Guests: {num_adults} Adult(s), {num_children} Child(ren)", ln=True)
     
-    
+    pdf.set_x(x+2)
+    pdf.cell(90, 5, f"Confirmation Date: {datetime.date.today().strftime('%d %b %Y')}", ln=True)
+    y_left_end = pdf.get_y()
 
-    # Right Column: Property
+    # --- Right Column: Property ---
     pdf.set_xy(x+97, y+2)
-    pdf.set_font("Times", "", 11)
-    pdf.multi_cell(90, 6, hotel_details)
+    
+    # Split the hotel input by the first line break
+    hotel_lines = hotel_details.split('\n', 1)
+    
+    # Make the Hotel Name BOLD
+    pdf.set_font("Times", "B", 12) 
+    pdf.multi_cell(90, 6, hotel_lines[0])
+    
+    # Make the Address REGULAR (if an address was typed)
+    if len(hotel_lines) > 1:
+        pdf.set_font("Times", "", 11)
+        pdf.set_x(x+97)
+        pdf.multi_cell(90, 6, hotel_lines[1])
+        
+    y_right_end = pdf.get_y()
 
-    pdf.set_y(max(pdf.get_y(), y + 18) + 6)
+    # Auto-adjust the height to match whichever column is tallest
+    pdf.set_y(max(y_left_end, y_right_end) + 6)
 
     # --- BLOCK 3: Dates ---
     pdf.set_fill_color(*GOLD)
@@ -205,7 +227,7 @@ def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out,
     pdf.set_font("Times", "B", 10)
     pdf.cell(0, 6, "IMPORTANT INFORMATION:", ln=True)
     pdf.set_font("Times", "", 10)
-    safe_info = "- Please present this voucher and a valid Passport/ID upon arrival.\n- Standard check-in time is 14:00 /15:00 hrs and check-out is 12:00 hrs.\n- Incidental charges/City Tax/ Resort Fee to be settled directly with the hotel."
+    safe_info = "- Please present this voucher and a valid Passport/ID upon arrival.\n- Standard check-in time is 14:00/15:00 hrs and check-out is 12:00 hrs.\n- Incidental charges/City Tax/Resort Fee to be settled directly with the hotel."
     pdf.multi_cell(0, 6, safe_info)
 
     # --- Footer ---
