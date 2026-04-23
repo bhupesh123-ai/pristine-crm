@@ -5,6 +5,8 @@ from sqlalchemy.orm import sessionmaker, declarative_base, relationship
 import datetime
 import os
 import time
+import tempfile
+import re
 
 # Official Google Library
 import google.generativeai as genai
@@ -236,7 +238,33 @@ def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out,
     
     pdf.cell(0, 5, "Discover Luxury | www.discoverluxury.in | www.pristinevacations.com", align="C")
 
-    return pdf.output(dest="S").encode("latin-1")
+    # --- Footer ---
+    pdf.ln(15)
+    pdf.set_draw_color(*GOLD)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(5)
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(*GREY_TEXT)
+    
+    pdf.cell(0, 5, "Discover Luxury | www.discoverluxury.in | www.pristinevacations.com", align="C")
+
+    # ==========================================
+    # THE FIX: SAFE FILE GENERATION
+    # ==========================================
+    # 1. Create a temporary physical file
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+    
+    # 2. Save the PDF to that real file (avoids memory crashes)
+    pdf.output(temp_file.name)
+    
+    # 3. Read it back as clean, browser-safe bytes
+    with open(temp_file.name, "rb") as f:
+        pdf_bytes = f.read()
+        
+    # 4. Delete the temp file to keep your server clean
+    os.remove(temp_file.name)
+    
+    return pdf_bytes
 # ===============================
 # 4. OFFICIAL GOOGLE AI ENGINE (SECRETS ONLY)
 # ===============================
