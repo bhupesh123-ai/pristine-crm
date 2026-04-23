@@ -236,17 +236,9 @@ def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out,
     pdf.set_font("Helvetica", "", 9)
     pdf.set_text_color(*GREY_TEXT)
     
-    pdf.cell(0, 5, "Discover Luxury | www.discoverluxury.in | www.pristinevacations.com", align="C")
+    pdf.cell(0, 5, "PRISTINE VACATIONS |  www.pristinevacations.com", align="C")
 
-    # --- Footer ---
-    pdf.ln(15)
-    pdf.set_draw_color(*GOLD)
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(5)
-    pdf.set_font("Helvetica", "", 9)
-    pdf.set_text_color(*GREY_TEXT)
-    
-    pdf.cell(0, 5, "Discover Luxury | www.discoverluxury.in | www.pristinevacations.com", align="C")
+   
 
     # ==========================================
     # THE FIX: SAFE FILE GENERATION
