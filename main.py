@@ -483,17 +483,15 @@ elif menu == "Voucher Generator":
     with st.container(border=True):
         st.subheader("1. Guest & Booking Details")
         
-        # Row 1: Names and Booking references
-        c1, c2, c3 = st.columns(3)
-        v_client = c1.text_input("Lead Passenger Name", placeholder="e.g. Mr. Arjun Singh Rawat")
-        v_conf = c2.text_input("Hotel Confirmation No.", placeholder="e.g. TBR7CNFIWO50...")
-        v_hotel = c3.text_area("Property Name & Address", height=68, placeholder="Citadines Sukhumvit 11\nBangkok 10110, Thailand")
+        # Row 1: Names and Occupancy (Flexible Text Boxes!)
+        c1, c2 = st.columns(2)
+        v_client = c1.text_area("Lead Passengers (Separate with commas)", placeholder="Mr. Rajat Singh, Mr. Amit Jain", height=100)
+        v_occ = c2.text_area("Occupancy Breakdown", placeholder="Room 1: 2 Adults\nRoom 2: 2 Adults", height=100)
 
-        # Row 2: Occupancy Numbers (NEW)
-        c4, c5, c6 = st.columns(3)
-        v_rooms = c4.number_input("Number of Rooms", min_value=1, value=1)
-        v_adults = c5.number_input("Number of Adults", min_value=1, value=2)
-        v_children = c6.number_input("Number of Children", min_value=0, value=0)
+        # Row 2: Hotel details
+        c3, c4 = st.columns(2)
+        v_conf = c3.text_input("Hotel Confirmation No.", placeholder="e.g. 12345 123456")
+        v_hotel = c4.text_area("Property Name & Address", height=68, placeholder="Hyatt Ludhiana\nFZR Road, Ludhiana")
 
         st.subheader("2. Travel Dates")
         d1, d2, d3 = st.columns(3)
@@ -509,10 +507,10 @@ elif menu == "Voucher Generator":
 
         st.subheader("3. Room & Inclusions")
         r1, r2 = st.columns(2)
-        v_room = r1.text_area("Room Category", placeholder="Studio Executive\n30 sqm | Queen Bed", height=100)
+        v_room = r1.text_area("Room Category", placeholder="Standard King Room", height=100)
         v_inc = r2.text_area("Inclusions", placeholder="Daily Breakfast\nFree WiFi", height=100)
 
-        v_notes = st.text_input("Arrival Information & Notes", placeholder="Arrival on 20th April at 05:00 HRS. Room is pre-booked...")
+        v_notes = st.text_input("Arrival Information & Notes", placeholder="Arrival on 20th April at 05:00 HRS. VIP Guest.")
 
         if st.button("📄 Generate Premium Voucher", type="primary"):
             if v_client and v_conf and v_hotel:
@@ -520,7 +518,7 @@ elif menu == "Voucher Generator":
                 out_str = v_out.strftime("%d %b %Y")
 
                 try:
-                    # Pass the 3 new number variables into the function
+                    # Passing the occupancy_details string!
                     pdf_bytes = create_voucher_pdf(
                         client_name=v_client,
                         conf_no=v_conf,
@@ -531,19 +529,20 @@ elif menu == "Voucher Generator":
                         room_type=v_room,
                         inclusions=v_inc,
                         notes=v_notes,
-                        num_rooms=v_rooms,
-                        num_adults=v_adults,
-                        num_children=v_children
+                        occupancy_details=v_occ
                     )
                     st.success("Premium Voucher generated successfully!")
 
+                    # Safe filename generation
+                    safe_name = v_client.split(',')[0].strip().replace(' ', '_')
+                    
                     st.download_button(
                         label="⬇️ Download Premium Voucher",
                         data=pdf_bytes,
-                        file_name=f"Hotel_Voucher_{v_client.replace(' ', '_')}.pdf",
+                        file_name=f"Hotel_Voucher_{safe_name}.pdf",
                         mime="application/pdf"
                     )
                 except Exception as e:
                     st.error(f"Error generating PDF: {str(e)}")
             else:
-                st.warning("⚠️ Please fill in the Lead Passenger, Confirmation No, and Property Details.")
+                st.warning("⚠️ Please fill in the Passengers, Confirmation No, and Property Details.")
