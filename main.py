@@ -65,16 +65,18 @@ except ImportError:
 
 from fpdf import FPDF
 import os
-import datetime
 
-def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out, nights, room_type, inclusions, notes, num_rooms, num_adults, num_children):
+def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out, nights, room_type, inclusions, notes, occupancy_details):
     
     def clean(text):
         if not text: return ""
         return str(text).replace("•", "-").replace("‘", "'").replace("’", "'").replace("“", '"').replace("”", '"').replace("–", "-").replace("—", "-").encode('latin-1', 'ignore').decode('latin-1')
 
-    # Clean all user inputs before printing
-    client_name = clean(client_name)
+    # 1. Format the Guest Names to stack perfectly
+    # Splits the names by comma, removes extra spaces, and forces them onto new lines
+    raw_names = clean(client_name).split(",")
+    stacked_names = "\n".join([name.strip() for name in raw_names if name.strip()])
+
     conf_no = clean(conf_no)
     hotel_details = clean(hotel_details)
     check_in = clean(check_in)
@@ -82,13 +84,14 @@ def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out,
     room_type = clean(room_type)
     inclusions = clean(inclusions)
     notes = clean(notes)
+    occupancy_details = clean(occupancy_details)
 
     pdf = FPDF('P', 'mm', 'A4')
     pdf.add_page()
     
-    # --- Ultra-Minimal Palette ---
+    # --- Quiet Luxury Palette ---
     GOLD = (186, 163, 104)       
-    LIGHT_GOLD = (250, 248, 242) 
+    LIGHT_GOLD = (252, 251, 248) # Even softer background fill
     DARK_TEXT = (40, 40, 40)
     GREY_TEXT = (100, 100, 100)
 
@@ -96,12 +99,13 @@ def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out,
     if os.path.exists("logo.png"):
         pdf.image("logo.png", x=10, y=10, h=25)
 
-    pdf.set_font("Times", "B", 18)
+    # Switched to Helvetica for a cleaner, modern luxury feel
+    pdf.set_font("Helvetica", "B", 18)
     pdf.set_text_color(*GOLD)
     pdf.set_xy(100, 12)
     pdf.multi_cell(100, 6, "PRISTINE VACATIONS", align="R")
 
-    pdf.set_font("Times", "", 10)
+    pdf.set_font("Helvetica", "", 9)
     pdf.set_text_color(*GREY_TEXT)
     pdf.set_xy(100, 19)
     pdf.multi_cell(100, 5, "College Road, Ludhiana, India 141001\n+91 161 4613384\ninfo@pristine.in | www.pristinevacations.com", align="R")
@@ -111,27 +115,28 @@ def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out,
     pdf.set_y(50)
 
     # 2. Main Title
-    pdf.set_font("Times", "B", 15)
+    pdf.set_font("Helvetica", "B", 14)
     pdf.set_text_color(*DARK_TEXT)
-    pdf.cell(0, 8, "HOTEL ACCOMMODATION VOUCHER", ln=True, align="C")
+    # Added letter-spacing illusion using spaces for a premium look
+    pdf.cell(0, 8, "H O T E L   A C C O M M O D A T I O N   V O U C H E R", ln=True, align="C")
     pdf.ln(6)
 
     # --- BLOCK 1: Conf & Status ---
     pdf.set_fill_color(*LIGHT_GOLD)
-    pdf.set_font("Times", "B", 10)
+    pdf.set_font("Helvetica", "B", 9)
     pdf.cell(95, 8, " CONFIRMATION NO.", fill=True)
     pdf.cell(95, 8, " BOOKING STATUS", fill=True, ln=True)
 
-    pdf.set_font("Times", "", 11)
+    pdf.set_font("Helvetica", "", 11)
     pdf.cell(95, 8, f" {conf_no}", fill=True)
-    pdf.set_font("Times", "B", 11)
+    pdf.set_font("Helvetica", "B", 11)
     pdf.set_text_color(*GOLD)
     pdf.cell(95, 8, " Confirmed & Guaranteed", fill=True, ln=True)
     pdf.ln(5)
 
-    # --- BLOCK 2: Guest & Property (UPDATED) ---
+    # --- BLOCK 2: Guest & Property ---
     pdf.set_text_color(*DARK_TEXT)
-    pdf.set_font("Times", "B", 10)
+    pdf.set_font("Helvetica", "B", 9)
     pdf.cell(95, 8, " GUEST DETAILS", fill=True)
     pdf.cell(95, 8, " PROPERTY DETAILS", fill=True, ln=True)
 
@@ -140,57 +145,48 @@ def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out,
 
     # --- Left Column: Guest ---
     pdf.set_xy(x+2, y+2)
-    pdf.set_font("Times", "B", 12)
+    pdf.set_font("Helvetica", "B", 11)
+    # This prints the newly stacked names
+    pdf.multi_cell(90, 6, stacked_names) 
     
-    # Changed to multi_cell so long lists of names wrap cleanly!
-    pdf.multi_cell(90, 6, client_name) 
-    
-    # Track the Y position so the next lines push down automatically
     y_current = pdf.get_y() 
-    pdf.set_xy(x+2, y_current + 2)
+    pdf.set_xy(x+2, y_current + 4)
 
-    # Rooms & Guests split clearly
-    pdf.set_font("Times", "B", 10)
-    pdf.cell(90, 5, f"Total Rooms: {num_rooms}", ln=True)
-    pdf.set_font("Times", "", 10)
-    pdf.set_x(x+2)
-    pdf.cell(90, 5, f"Total Guests: {num_adults} Adult(s), {num_children} Child(ren)", ln=True)
+    # This prints the exact room breakdown your staff types
+    pdf.set_font("Helvetica", "", 10)
+    pdf.multi_cell(90, 5, occupancy_details)
     
-    pdf.set_x(x+2)
-    pdf.cell(90, 5, f"Confirmation Date: {datetime.date.today().strftime('%d %b %Y')}", ln=True)
     y_left_end = pdf.get_y()
 
     # --- Right Column: Property ---
     pdf.set_xy(x+97, y+2)
     
-    # Split the hotel input by the first line break
     hotel_lines = hotel_details.split('\n', 1)
     
-    # Make the Hotel Name BOLD
-    pdf.set_font("Times", "B", 12) 
+    # BOLD Hotel Name
+    pdf.set_font("Helvetica", "B", 12) 
     pdf.multi_cell(90, 6, hotel_lines[0])
     
-    # Make the Address REGULAR (if an address was typed)
+    # Regular Address
     if len(hotel_lines) > 1:
-        pdf.set_font("Times", "", 11)
+        pdf.set_font("Helvetica", "", 10)
         pdf.set_x(x+97)
-        pdf.multi_cell(90, 6, hotel_lines[1])
+        pdf.multi_cell(90, 5, hotel_lines[1])
         
     y_right_end = pdf.get_y()
 
-    # Auto-adjust the height to match whichever column is tallest
-    pdf.set_y(max(y_left_end, y_right_end) + 6)
+    pdf.set_y(max(y_left_end, y_right_end) + 8)
 
     # --- BLOCK 3: Dates ---
     pdf.set_fill_color(*GOLD)
     pdf.set_text_color(255, 255, 255)
-    pdf.set_font("Times", "B", 10)
+    pdf.set_font("Helvetica", "B", 9)
     pdf.cell(63, 8, "CHECK-IN", fill=True, align="C")
     pdf.cell(64, 8, "NIGHTS", fill=True, align="C")
     pdf.cell(63, 8, "CHECK-OUT", fill=True, align="C", ln=True)
 
     pdf.set_text_color(*DARK_TEXT)
-    pdf.set_font("Times", "", 12)
+    pdf.set_font("Helvetica", "", 11)
     pdf.cell(63, 10, check_in, align="C")
     pdf.cell(64, 10, str(nights), align="C")
     pdf.cell(63, 10, check_out, align="C", ln=True)
@@ -198,14 +194,14 @@ def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out,
 
     # --- BLOCK 4: Room & Inclusions ---
     pdf.set_fill_color(*LIGHT_GOLD)
-    pdf.set_font("Times", "B", 10)
+    pdf.set_font("Helvetica", "B", 9)
     pdf.cell(95, 8, " ROOM CATEGORY", fill=True)
     pdf.cell(95, 8, " INCLUSIONS", fill=True, ln=True)
 
     x = pdf.get_x()
     y = pdf.get_y()
 
-    pdf.set_font("Times", "", 11)
+    pdf.set_font("Helvetica", "", 10)
     pdf.set_xy(x+2, y+2)
     pdf.multi_cell(90, 6, room_type)
     y_room = pdf.get_y()
@@ -218,30 +214,29 @@ def create_voucher_pdf(client_name, conf_no, hotel_details, check_in, check_out,
 
     # --- BLOCK 5: Notes & Info ---
     if notes.strip():
-        pdf.set_font("Times", "B", 10)
+        pdf.set_font("Helvetica", "B", 9)
         pdf.cell(0, 6, "ARRIVAL & SPECIAL NOTES:", ln=True)
-        pdf.set_font("Times", "", 10)
-        pdf.multi_cell(0, 6, notes)
+        pdf.set_font("Helvetica", "", 10)
+        pdf.multi_cell(0, 5, notes)
         pdf.ln(6)
 
-    pdf.set_font("Times", "B", 10)
+    pdf.set_font("Helvetica", "B", 9)
     pdf.cell(0, 6, "IMPORTANT INFORMATION:", ln=True)
-    pdf.set_font("Times", "", 10)
+    pdf.set_font("Helvetica", "", 9)
     safe_info = "- Please present this voucher and a valid Passport/ID upon arrival.\n- Standard check-in time is 14:00/15:00 hrs and check-out is 12:00 hrs.\n- Incidental charges/City Tax/Resort Fee to be settled directly with the hotel."
-    pdf.multi_cell(0, 6, safe_info)
+    pdf.multi_cell(0, 5, safe_info)
 
     # --- Footer ---
     pdf.ln(15)
     pdf.set_draw_color(*GOLD)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(5)
-    pdf.set_font("Times", "I", 10)
-    pdf.set_text_color(*GOLD)
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(*GREY_TEXT)
     
-    pdf.cell(0, 5, "PRISTINE VACATIONS | www.pristinevacations.com", align="C")
+    pdf.cell(0, 5, "Discover Luxury | www.discoverluxury.in | www.pristinevacations.com", align="C")
 
     return pdf.output(dest="S").encode("latin-1")
-    
 # ===============================
 # 4. OFFICIAL GOOGLE AI ENGINE (SECRETS ONLY)
 # ===============================
